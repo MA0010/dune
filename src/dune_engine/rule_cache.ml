@@ -185,16 +185,13 @@ module Workspace_local = struct
       let rec loop stages needed_deps =
         match stages with
         | [] ->
-          if fst needed_deps = Dep.Set.empty
-          then Fiber.return (Hit produced_targets)
-          else
-            let open Fiber.O in
-            let deps, old_digest = needed_deps in
-            let* deps = Memo.run (build_deps deps) in
-            let new_digest = Dep.Facts.digest deps ~env in
-            (match Digest.equal old_digest new_digest with
-             | true -> Fiber.return (Hit produced_targets)
-             | false -> Fiber.return (Miss Miss_reason.Needed_deps_changed))
+          let open Fiber.O in
+          let deps, old_digest = needed_deps in
+          let* deps = Memo.run (build_deps deps) in
+          let new_digest = Dep.Facts.digest deps ~env in
+          (match Digest.equal old_digest new_digest with
+           | true -> Fiber.return (Hit produced_targets)
+           | false -> Fiber.return (Miss Miss_reason.Needed_deps_changed))
         | (deps, old_digest) :: rest ->
           let open Fiber.O in
           let* deps = Memo.run (build_deps deps) in

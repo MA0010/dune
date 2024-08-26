@@ -10,6 +10,8 @@
   dune_targets
   fiber
   stdune
-  unix)
+  unix
+  memo
+  dune_deps)
  (instrumentation
   (backend bisect_ppx)))

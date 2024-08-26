@@ -43,17 +43,21 @@ module Make (S : sig
 struct
   open S
 
-  let try_to_restore_from_shared_cache ~mode ~rule_digest ~targets
-    : (Digest.t Targets.Produced.t, Miss_reason.t) Hit_or_miss.t Fiber.t
+  let try_to_restore_from_shared_cache ~mode ~rule_digest ~targets ~build_deps ~env
+    : (Digest.t Targets.Produced.t * (Dep.Set.t * Digest.t), Miss_reason.t) Hit_or_miss.t
+        Fiber.t
     =
     let open Fiber.O in
-    let+ () = download ~rule_digest in
     let key () =
       shared_cache_key_string_for_log
         ~rule_digest
         ~head_target:(Targets.Validated.head targets)
     in
-    match Local.restore_artifacts ~mode ~rule_digest ~target_dir:targets.root with
+    let+ () = download ~rule_digest
+    and+ result =
+      Local.restore_artifacts ~mode ~rule_digest ~target_dir:targets.root ~build_deps ~env
+    in
+    match result with
     | Restored artifacts ->
       (* it's a small departure from the general "debug cache" semantics that
          we're also printing successes, but it can be useful to see successes
@@ -61,11 +65,11 @@ struct
          directory appeared *)
       if debug_shared_cache then Log.info [ Pp.textf "cache restore success %s" (key ()) ];
       Hit_or_miss.Hit artifacts
-    | Not_found_in_cache -> Hit_or_miss.Miss Miss_reason.Not_found_in_cache
+    | Restore_result.Not_found_in_cache -> Hit_or_miss.Miss Miss_reason.Not_found_in_cache
     | Error exn -> Miss (Error (Printexc.to_string exn))
   ;;
 
-  let lookup_impl ~rule_digest ~targets =
+  let lookup_impl ~rule_digest ~targets ~build_deps ~env =
     match config with
     | Disabled -> Fiber.return (Hit_or_miss.Miss Miss_reason.Cache_disabled)
     | Enabled { storage_mode = mode; reproducibility_check } ->
@@ -75,17 +79,18 @@ struct
             [check_probability] more meaningful, we could first make sure that
             the shared cache actually does contain an entry for [rule_digest]. *)
          Fiber.return (Hit_or_miss.Miss Miss_reason.Rerunning_for_reproducibility_check)
-       | false -> try_to_restore_from_shared_cache ~mode ~rule_digest ~targets)
+       | false ->
+         try_to_restore_from_shared_cache ~mode ~rule_digest ~targets ~build_deps ~env)
   ;;
 
-  let lookup ~can_go_in_shared_cache ~rule_digest ~targets
-    : Digest.t Targets.Produced.t option Fiber.t
+  let lookup ~can_go_in_shared_cache ~rule_digest ~targets ~build_deps ~env
+    : (Digest.t Targets.Produced.t * (Dep.Set.t * Digest.t)) option Fiber.t
     =
     let open Fiber.O in
     let+ result =
       match can_go_in_shared_cache with
       | false -> Fiber.return (Hit_or_miss.Miss Miss_reason.Cannot_go_in_shared_cache)
-      | true -> lookup_impl ~rule_digest ~targets
+      | true -> lookup_impl ~rule_digest ~targets ~build_deps ~env
     in
     match result with
     | Hit result -> Some result
@@ -105,7 +110,12 @@ struct
   (* If this function fails to store the rule to the shared cache, it returns
      [None] because we don't want this to be a catastrophic error. We simply log
      this incident and continue without saving the rule to the shared cache. *)
-  let try_to_store_to_shared_cache ~mode ~rule_digest ~action ~produced_targets
+  let try_to_store_to_shared_cache
+    ~mode
+    ~rule_digest
+    ~action
+    ~produced_targets
+    ~needed_deps
     : Digest.t Targets.Produced.t option Fiber.t
     =
     let open Fiber.O in
@@ -138,7 +148,7 @@ struct
       let compute_digest ~executable path =
         Fiber.return (Digest.file_with_executable_bit ~executable path)
       in
-      Local.store_artifacts ~mode ~rule_digest ~compute_digest targets
+      Local.store_artifacts ~mode ~rule_digest ~compute_digest ~needed_deps targets
       >>= (function
        | Stored targets_and_digests ->
          let+ () = upload ~rule_digest in
@@ -274,6 +284,7 @@ struct
     ~should_remove_write_permissions_on_generated_files
     ~action
     ~(produced_targets : unit Targets.Produced.t)
+    ~needed_deps
     : Digest.t Targets.Produced.t Fiber.t
     =
     match config with
@@ -281,7 +292,12 @@ struct
       when can_go_in_shared_cache ->
       let open Fiber.O in
       let+ produced_targets_with_digests =
-        try_to_store_to_shared_cache ~mode ~rule_digest ~produced_targets ~action
+        try_to_store_to_shared_cache
+          ~mode
+          ~rule_digest
+          ~produced_targets
+          ~action
+          ~needed_deps
       in
       (match produced_targets_with_digests with
        | Some produced_targets_with_digests -> produced_targets_with_digests

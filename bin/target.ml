@@ -120,7 +120,7 @@ let resolve_path path ~(setup : Dune_rules.Main.build_system)
     >>| Option.map ~f:(fun _ ->
       [ Request.Alias
           (Alias.in_dir
-             ~name:Dune_engine.Alias.Name.default
+             ~name:Dune_deps.Alias.Name.default
              ~recursive:true
              ~contexts:setup.contexts
              path)
@@ -210,9 +210,7 @@ let resolve_target root ~setup target =
          (resolve_alias root ~recursive:true sv ~setup))
   | File sv as dep ->
     let f ctx =
-      let sctx =
-        Dune_engine.Context_name.Map.find_exn setup.scontexts (Context.name ctx)
-      in
+      let sctx = Dune_deps.Context_name.Map.find_exn setup.scontexts (Context.name ctx) in
       let* path = expand_path root sctx sv in
       Action_builder.of_memo (resolve_path path ~setup)
       >>| Result.map_error ~f:(fun hints -> dep, hints)

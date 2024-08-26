@@ -76,6 +76,7 @@ module Artifacts = struct
     ~mode
     ~metadata
     ~rule_digest
+    ~needed_deps
     (artifacts : Digest.t Targets.Produced.t)
     =
     let entries =
@@ -86,7 +87,7 @@ module Artifacts = struct
         entry :: entries)
       |> List.rev
     in
-    Metadata_file.store ~mode { metadata; entries } ~rule_digest
+    Metadata_file.store ~mode { metadata; entries; needed_deps } ~rule_digest
   ;;
 
   (* Step I of [store_skipping_metadata].
@@ -216,15 +217,19 @@ module Artifacts = struct
               Store_artifacts_result.of_store_result ~artifacts result)))
   ;;
 
-  let store ~mode ~rule_digest ~compute_digest targets : Store_artifacts_result.t Fiber.t =
+  let store ~mode ~rule_digest ~compute_digest ~needed_deps targets
+    : Store_artifacts_result.t Fiber.t
+    =
     let+ result = store_skipping_metadata ~mode ~targets ~compute_digest in
     Store_artifacts_result.bind result ~f:(fun artifacts ->
-      let result = store_metadata ~mode ~rule_digest ~metadata:[] artifacts in
+      let result =
+        store_metadata ~mode ~rule_digest ~metadata:[] ~needed_deps artifacts
+      in
       Store_artifacts_result.of_store_result ~artifacts result)
   ;;
 
   module File_restore = struct
-    exception E of Digest.t Targets.Produced.t Restore_result.t
+    exception E of (Digest.t Targets.Produced.t * (Dep.Set.t * Digest.t)) Restore_result.t
 
     module Unwind : sig
       type t
@@ -291,25 +296,40 @@ module Artifacts = struct
     ;;
   end
 
-  let restore ~mode ~rule_digest ~target_dir =
-    Restore_result.bind (list ~rule_digest) ~f:(fun (entries : Metadata_entry.t list) ->
-      let artifacts =
-        Path.Local.Map.of_list_map_exn
-          entries
-          ~f:(fun { Metadata_entry.file_path; file_digest } ->
-            Path.Local.of_string file_path, file_digest)
-        |> Targets.Produced.of_files target_dir
-      in
-      try
-        File_restore.create_all_or_none mode artifacts;
-        Restored artifacts
-      with
-      | File_restore.E result ->
-        (* If [result] is [Not_found_in_cache] then one of the entries mentioned in
-           the metadata is missing. The trimmer will eventually delete such "broken"
-           metadata, so it is reasonable to consider that this [rule_digest] is not
-           found in the cache. *)
-        result)
+  let check_needed_deps ~needed_deps ~build_deps ~env =
+    let deps_set, old_digest = needed_deps in
+    let+ facts = Memo.run (build_deps deps_set) in
+    let new_digest = Dep.Facts.digest facts ~env in
+    Digest.equal old_digest new_digest
+  ;;
+
+  let restore ~mode ~rule_digest ~target_dir ~build_deps ~env : _ Restore_result.t Fiber.t
+    =
+    match list ~rule_digest with
+    | (Not_found_in_cache | Error _) as e -> Fiber.return e
+    | Restored { entries; needed_deps } ->
+      let open Fiber.O in
+      let+ needed_deps_up_to_date = check_needed_deps ~needed_deps ~build_deps ~env in
+      if not needed_deps_up_to_date
+      then Restore_result.Not_found_in_cache
+      else (
+        let artifacts =
+          Path.Local.Map.of_list_map_exn
+            entries
+            ~f:(fun { Metadata_entry.file_path; file_digest } ->
+              Path.Local.of_string file_path, file_digest)
+          |> Targets.Produced.of_files target_dir
+        in
+        try
+          File_restore.create_all_or_none mode artifacts;
+          Restored (artifacts, needed_deps)
+        with
+        | File_restore.E result ->
+          (* If [result] is [Not_found_in_cache] then one of the entries mentioned in
+             the metadata is missing. The trimmer will eventually delete such "broken"
+             metadata, so it is reasonable to consider that this [rule_digest] is not
+             found in the cache. *)
+          result)
   ;;
 end
 

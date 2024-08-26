@@ -77,6 +77,7 @@ module Artifacts : sig
     type t =
       { metadata : Sexp.t list
       ; entries : Metadata_entry.t list
+      ; needed_deps : Dep.Set.t * Digest.t
       }
 
     (** Store artifacts metadata produced by a rule with a given digest. If
@@ -88,10 +89,15 @@ module Artifacts : sig
     val restore : rule_digest:Digest.t -> t Restore_result.t
   end
 
+  type restored =
+    { entries : Metadata_entry.t list
+    ; needed_deps : Dep.Set.t * Digest.t
+    }
+
   (** List entries of a metadata file produced by a rule with a given digest.
       The list of entries is restored only in memory, i.e. no new files will be
       created. *)
-  val list : rule_digest:Digest.t -> Metadata_entry.t list Restore_result.t
+  val list : rule_digest:Digest.t -> restored Restore_result.t
 end
 
 (** Some generic operations on metadata files. *)

@@ -248,21 +248,61 @@ module Artifacts = struct
            storing artifacts in the cache. We keep the order to avoid confusion
            even though sorting the entres is tempting. *)
         entries : Metadata_entry.t list
+      ; needed_deps : Dep.Set.t * Digest.t
       }
 
-    let to_sexp { metadata; entries } =
+    let needed_deps_to_sexp needed_deps =
+      let digest = snd needed_deps in
+      let deps_set = fst needed_deps in
+      let s =
+        Dep.Set.fold
+          ~init:[]
+          ~f:(fun dep acc -> Sexp.List (Dep.encode_to_csexp dep) :: acc)
+          deps_set
+      in
+      [ Sexp.List s; Atom (Digest.to_string digest) ]
+    ;;
+
+    let needed_deps_of_sexp = function
+      | [ Sexp.List deps_set; Atom deps_digest ] ->
+        let deps_set =
+          List.fold_left
+            ~init:Dep.Set.empty
+            ~f:(fun acc sexp -> Dep.Set.add acc (Dep.decode_of_csexp sexp))
+            deps_set
+        in
+        (match Digest.from_hex deps_digest with
+         | Some deps_digest -> Ok (deps_set, deps_digest)
+         | None ->
+           Error
+             (Failure
+                (sprintf
+                   "Cannot parse file digest %s in cache metadata entry"
+                   deps_digest)))
+      | _ -> Error (Failure "Cannot parse cache metadata entry")
+    ;;
+
+    let to_sexp { metadata; entries; needed_deps } =
       Sexp.List
         [ List (Atom "metadata" :: metadata)
         ; List (Atom "files" :: List.map entries ~f:Metadata_entry.to_sexp)
+        ; List (Atom "needed_deps" :: needed_deps_to_sexp needed_deps)
         ]
     ;;
 
     let of_sexp = function
-      | Sexp.List [ List (Atom "metadata" :: metadata); List (Atom "files" :: entries) ]
-        ->
+      | Sexp.List
+          [ List (Atom "metadata" :: metadata)
+          ; List (Atom "files" :: entries)
+          ; List (Atom "needed_deps" :: needed_deps)
+          ] ->
         let entries = List.map entries ~f:Metadata_entry.of_sexp in
+        let needed_deps = needed_deps_of_sexp needed_deps in
         (match Result.List.all entries with
-         | Ok entries -> Ok { metadata; entries }
+         | Ok entries ->
+           (match needed_deps with
+            | Ok needed_deps -> Ok { metadata; entries; needed_deps }
+            | Error e -> Error e)
          | Error e -> Error e)
       | _ -> Error (Failure "Cannot parse cache metadata")
     ;;
@@ -295,14 +335,20 @@ module Artifacts = struct
     ;;
 
     let restore ~rule_digest =
+      let of_sexp = of_sexp in
       restore_metadata ~rule_or_action_digest:rule_digest ~of_sexp
     ;;
   end
 
+  type restored =
+    { entries : Metadata_entry.t list
+    ; needed_deps : Dep.Set.t * Digest.t
+    }
+
   let list ~rule_digest =
     Restore_result.map
       (Metadata_file.restore ~rule_digest)
-      ~f:(fun ({ entries; _ } : Metadata_file.t) -> entries)
+      ~f:(fun ({ entries; needed_deps; _ } : Metadata_file.t) -> { entries; needed_deps })
   ;;
 end
 

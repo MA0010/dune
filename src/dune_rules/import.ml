@@ -29,11 +29,6 @@ include struct
   module Rule = Rule
   module Rules = Rules
   module Build_system = Build_system
-  module Context_name = Context_name
-  module Dpath = Dpath
-  module Alias = Alias
-  module File_selector = File_selector
-  module Dep = Dep
   module Build_config = Build_config
   module Fs_memo = Fs_memo
   module Sandbox_config = Sandbox_config
@@ -49,6 +44,12 @@ include struct
   module Load_rules = Load_rules
   module Response_file = Response_file
   module Subdir_set = Subdir_set
+  open Dune_deps
+  module Context_name = Context_name
+  module Dpath = Dpath
+  module Alias = Alias
+  module File_selector = File_selector
+  module Dep = Dep
 end
 
 include struct

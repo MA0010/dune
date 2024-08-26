@@ -18,22 +18,22 @@ let ls_term (fetch_results : Path.Build.t -> string list Action_builder.t) =
         let build_dir, src_dir =
           match (dir : Path.t) with
           | In_source_tree d ->
-            Path.Build.append_source (Dune_engine.Context_name.build_dir context) d, d
+            Path.Build.append_source (Dune_deps.Context_name.build_dir context) d, d
           | In_build_dir d ->
             let src_dir =
               (* We only drop the build context if it is correct. *)
               match Path.Build.extract_build_context d with
               | Some (dir_context_name, d) ->
-                if Dune_engine.Context_name.equal
+                if Dune_deps.Context_name.equal
                      context
-                     (Dune_engine.Context_name.of_string dir_context_name)
+                     (Dune_deps.Context_name.of_string dir_context_name)
                 then d
                 else
                   User_error.raise
                     [ Pp.textf
                         "Directory %s is not in context %S."
                         (Path.to_string_maybe_quoted dir)
-                        (Dune_engine.Context_name.to_string context)
+                        (Dune_deps.Context_name.to_string context)
                     ]
               | None -> Code_error.raise "aliases_targets: build dir without context" []
             in
@@ -96,10 +96,10 @@ module Aliases_cmd = struct
         Action_builder.of_memo (Load_rules.load_dir ~dir:(Path.build dir))
       in
       match load_dir with
-      | Load_rules.Loaded.Build build -> Dune_engine.Alias.Name.Map.keys build.aliases
+      | Load_rules.Loaded.Build build -> Dune_deps.Alias.Name.Map.keys build.aliases
       | _ -> []
     in
-    List.map ~f:Dune_engine.Alias.Name.to_string alias_targets
+    List.map ~f:Dune_deps.Alias.Name.to_string alias_targets
   ;;
 
   let term = ls_term fetch_results

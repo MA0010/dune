@@ -493,8 +493,7 @@ let rec exec t ~display ~ectx ~eenv : Action_res.t Produce.t =
                Fiber.return ())
       in
       Action_res.return Done)
-  | Pipe (outputs, l) ->
-    exec_pipe ~display ~ectx ~eenv outputs l
+  | Pipe (outputs, l) -> exec_pipe ~display ~ectx ~eenv outputs l
   | Extension (module A) ->
     let+ () =
       Produce.of_fiber
@@ -546,28 +545,27 @@ and redirect t ~display ~ectx ~eenv ?in_ ?out () =
   result
 
 and exec_list ts ~display ~ectx ~eenv : Action_res.t Produce.t =
-   match ts with
-   | [] -> Produce.return (Action_res.return Done ~needed_deps:Dep.Set.empty)
-   | [ t ] ->
-     let* action_res = exec t ~display ~ectx ~eenv in
-     (match action_res with
-      | { done_or_more_deps = d; needed_deps } ->
-        Produce.return (Action_res.return d ~needed_deps))
-   | t :: rest ->
-     let* action_res =
-       let stdout_to = Process.Io.multi_use eenv.stdout_to in
-       let stderr_to = Process.Io.multi_use eenv.stderr_to in
-       let stdin_from = Process.Io.multi_use eenv.stdin_from in
-       exec t ~display ~ectx ~eenv:{ eenv with stdout_to; stderr_to; stdin_from }
-     in
-     (match action_res with
+  match ts with
+  | [] -> Produce.return (Action_res.return Done ~needed_deps:Dep.Set.empty)
+  | [ t ] ->
+    let* action_res = exec t ~display ~ectx ~eenv in
+    (match action_res with
+     | { done_or_more_deps = d; needed_deps } ->
+       Produce.return (Action_res.return d ~needed_deps))
+  | t :: rest ->
+    let* action_res =
+      let stdout_to = Process.Io.multi_use eenv.stdout_to in
+      let stderr_to = Process.Io.multi_use eenv.stderr_to in
+      let stdin_from = Process.Io.multi_use eenv.stdin_from in
+      exec t ~display ~ectx ~eenv:{ eenv with stdout_to; stderr_to; stdin_from }
+    in
+    (match action_res with
      | { done_or_more_deps = Need_more_deps _ as need; needed_deps } ->
-      Produce.return
-        (Action_res.return need ~needed_deps)
-    | { done_or_more_deps = Done; needed_deps } ->
-        let* x = exec_list rest ~display ~ectx ~eenv in
-        let needed_deps = Dep.Set.union x.needed_deps needed_deps in 
-        Produce.return (Action_res.return Done ~needed_deps))
+       Produce.return (Action_res.return need ~needed_deps)
+     | { done_or_more_deps = Done; needed_deps } ->
+       let* x = exec_list rest ~display ~ectx ~eenv in
+       let needed_deps = Dep.Set.union x.needed_deps needed_deps in
+       Produce.return (Action_res.return Done ~needed_deps))
 
 and exec_pipe outputs ts ~display ~ectx ~eenv : Action_res.t Produce.t =
   let tmp_file () =
@@ -594,8 +592,7 @@ and exec_pipe outputs ts ~display ~ectx ~eenv : Action_res.t Produce.t =
       Dtemp.destroy File in_;
       (match action_res with
        | { done_or_more_deps = Need_more_deps _ as need; needed_deps } ->
-         Produce.return
-           (Action_res.return need ~needed_deps)
+         Produce.return (Action_res.return need ~needed_deps)
        | { done_or_more_deps = Done; needed_deps = needed } ->
          let* res = loop ~in_:out ts in
          let needed_deps = Dep.Set.union res.needed_deps needed in
@@ -613,9 +610,8 @@ and exec_pipe outputs ts ~display ~ectx ~eenv : Action_res.t Produce.t =
     in
     let* done_or_deps = redirect_out t1 ~display ~ectx ~eenv ~perm:Normal outputs out in
     (match done_or_deps with
-     | { done_or_more_deps = Need_more_deps _ as need; needed_deps} ->
-       Produce.return
-         (Action_res.return need ~needed_deps)
+     | { done_or_more_deps = Need_more_deps _ as need; needed_deps } ->
+       Produce.return (Action_res.return need ~needed_deps)
      | { done_or_more_deps = Done; needed_deps = needed } ->
        let* res = loop ~in_:out ts in
        let needed_deps = Dep.Set.union res.needed_deps needed in

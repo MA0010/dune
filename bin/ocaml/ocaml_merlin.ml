@@ -154,7 +154,7 @@ end = struct
     match to_local file with
     | Error s -> Fiber.return (Error s)
     | Ok file ->
-      (match Dune_engine.Context_name.is_default selected_context with
+      (match Dune_deps.Context_name.is_default selected_context with
        | false ->
          Fiber.return
            (Ok (Path.Build.append_local (Context_name.build_dir selected_context) file))

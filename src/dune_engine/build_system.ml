@@ -590,7 +590,7 @@ end = struct
             (* Step III. Try to restore artifacts from the shared cache. *)
             Rule_cache.Shared.lookup ~can_go_in_shared_cache ~rule_digest ~targets
             >>= function
-            | Some produced_targets ->
+            | Some (produced_targets, needed_deps) ->
               (* Rules with dynamic deps can't be stored to the shared cache
                  (see the [is_action_dynamic] check above), so we know this is
                  not a dynamic action, so returning an empty list is correct.
@@ -598,10 +598,7 @@ end = struct
                  is precisely the reason why we don't store dynamic actions in
                  the shared cache. *)
               let dynamic_deps_stages = [] in
-              Fiber.return
-                ( produced_targets
-                , dynamic_deps_stages
-                , (Dep.Set.empty, Dep.Facts.digest Dep.Facts.empty ~env:action.env) )
+              Fiber.return (produced_targets, dynamic_deps_stages, needed_deps)
             | None ->
               (* Step IV. Execute the build action. *)
               let* exec_result =
@@ -615,6 +612,10 @@ end = struct
                   ~sandbox_mode
                   ~targets
               in
+              let needed_deps =
+                let deps, facts = exec_result.action_exec_result.needed_deps in
+                deps, Dep.Facts.digest facts ~env:action.env
+              in
               (* Step V. Examine produced targets and store them to the shared
                  cache if needed. *)
               let* produced_targets =
@@ -627,6 +628,7 @@ end = struct
                      .should_remove_write_permissions_on_generated_files
                        execution_parameters)
                   ~produced_targets:exec_result.produced_targets
+                  ~needed_deps
                   ~action:(fun () -> Action.for_shell action.action |> Action_to_sh.pp)
               in
               let dynamic_deps_stages =
@@ -634,10 +636,6 @@ end = struct
                   exec_result.action_exec_result.dynamic_deps_stages
                   ~f:(fun (deps, fact_map) ->
                     deps, Dep.Facts.digest fact_map ~env:action.env)
-              in
-              let needed_deps =
-                let deps, facts = exec_result.action_exec_result.needed_deps in
-                deps, Dep.Facts.digest facts ~env:action.env
               in
               Fiber.return (produced_targets, dynamic_deps_stages, needed_deps)
           in

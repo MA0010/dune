@@ -12,3 +12,4 @@ val compare : t -> t -> Ordering.t
 val of_dyn : Dyn.t -> t
 val to_dyn : t -> Dyn.t
 val record : (string * t) list -> t
+val parse_string : string -> (t, int * string) result

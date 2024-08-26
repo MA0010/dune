@@ -22,13 +22,13 @@ module Dep : sig
   type t = Dune_lang.Dep_conf.t
 
   val file : string -> t
-  val alias : dir:Stdune.Path.Local.t -> Dune_engine.Alias.Name.t -> t
-  val alias_rec : dir:Stdune.Path.Local.t -> Dune_engine.Alias.Name.t -> t
+  val alias : dir:Stdune.Path.Local.t -> Dune_deps.Alias.Name.t -> t
+  val alias_rec : dir:Stdune.Path.Local.t -> Dune_deps.Alias.Name.t -> t
   val to_string_maybe_quoted : t -> string
 end
 
 val bytes : int64 conv
-val context_name : Dune_engine.Context_name.t conv
+val context_name : Dune_deps.Context_name.t conv
 val dep : Dep.t conv
 val graph_format : Dune_graph.Graph.File_format.t conv
 val path : Path.t conv

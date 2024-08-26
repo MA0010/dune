@@ -1,5 +1,5 @@
 open Import
-module Alias = Dune_engine.Alias
+module Alias = Dune_deps.Alias
 module Alias_builder = Dune_rules.Alias_builder
 
 type t =

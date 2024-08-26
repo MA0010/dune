@@ -1,14 +1,14 @@
 open Import
 
 type t = private
-  { name : Dune_engine.Alias.Name.t
+  { name : Dune_deps.Alias.Name.t
   ; recursive : bool
   ; dir : Path.Source.t
   ; contexts : Context.t list
   }
 
 val in_dir
-  :  name:Dune_engine.Alias.Name.t
+  :  name:Dune_deps.Alias.Name.t
   -> recursive:bool
   -> contexts:Context.t list
   -> Path.t

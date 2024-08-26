@@ -25,7 +25,7 @@ let find_by_dir map ~dir =
   if Path.Build.is_root dir
   then invalid_path dir
   else (
-    match Dune_engine.Dpath.analyse_target dir with
+    match Dune_deps.Dpath.analyse_target dir with
     | Regular (name, src) ->
       (match Install.Context.analyze_path name src with
        | Normal (_, path) -> find_by_dir map path

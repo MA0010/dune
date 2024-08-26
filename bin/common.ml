@@ -192,7 +192,7 @@ module Options_implied_by_dash_p = struct
     and+ default_target =
       Arg.(
         value
-        & opt dep (Dep.alias ~dir:Stdune.Path.Local.root Dune_engine.Alias.Name.default)
+        & opt dep (Dep.alias ~dir:Stdune.Path.Local.root Dune_deps.Alias.Name.default)
         & info
             [ "default-target" ]
             ~docs
@@ -1366,6 +1366,6 @@ let config_from_config_file = Options_implied_by_dash_p.config_term
 let context_arg ~doc =
   Arg.(
     value
-    & opt Arg.context_name Dune_engine.Context_name.default
+    & opt Arg.context_name Dune_deps.Context_name.default
     & info [ "context" ] ~docv:"CONTEXT" ~doc)
 ;;

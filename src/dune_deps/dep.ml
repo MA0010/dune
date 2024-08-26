@@ -75,6 +75,50 @@ module T = struct
     | Alias a -> variant "Alias" [ Alias.to_dyn a ]
     | Universe -> variant "Universe" []
   ;;
+
+  let encode_to_csexp t =
+    match t with
+    | File_selector g ->
+      [ Sexp.Atom "File_selector"
+      ; Sexp.Atom (Path.to_string (File_selector.dir g))
+      ; Predicate_lang.Glob.encode_to_csexp (File_selector.predicate g)
+      ; Sexp.Atom (Bool.to_string (File_selector.only_generated_files g))
+      ]
+    | Env e -> [ Sexp.Atom "Env"; Sexp.Atom e ]
+    | File f -> [ Sexp.Atom "File"; Sexp.Atom (Path.to_string f) ]
+    | Alias a ->
+      [ Sexp.Atom "Alias"
+      ; Sexp.Atom (Dune_util.Alias_name.to_string (Alias.name a))
+      ; Sexp.Atom (Path.Build.to_string (Alias.dir a))
+      ]
+    | Universe -> [ Sexp.Atom "Universe" ]
+  ;;
+
+  let decode_of_csexp t =
+    match t with
+    | Sexp.List
+        [ Sexp.Atom "File_selector"
+        ; Sexp.Atom dir
+        ; predicate
+        ; Sexp.Atom only_generated_files
+        ] ->
+      let dir = Path.of_string dir in
+      let only_generated_files = bool_of_string only_generated_files in
+      let predicate = Predicate_lang.Glob.decode_of_csexp ~loc:Loc.none predicate in
+      File_selector (File_selector.of_predicate_lang ~dir ~only_generated_files predicate)
+    | Sexp.List [ Sexp.Atom "Env"; Sexp.Atom e ] -> Env e
+    | Sexp.List [ Sexp.Atom "File"; Sexp.Atom path ] -> File (Path.of_string path)
+    | Sexp.List [ Sexp.Atom "Alias"; Sexp.Atom name; Sexp.Atom dir ] ->
+      let dir = Path.Build.of_string dir in
+      let name = Dune_util.Alias_name.of_string name in
+      Alias (Alias.make name ~dir)
+    | Sexp.List [ Sexp.Atom "universe" ] -> Universe
+    | _ ->
+      Code_error.raise
+        ~loc:Loc.none
+        "can not parse S-expression into a dependency"
+        [ "Failure while parsing", Dyn.string (Sexp.to_string t) ]
+  ;;
 end
 
 include T

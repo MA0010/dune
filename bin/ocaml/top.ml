@@ -45,7 +45,7 @@ let term =
       let open Memo.O in
       let* setup = setup in
       let sctx =
-        Dune_engine.Context_name.Map.find setup.scontexts ctx_name |> Option.value_exn
+        Dune_deps.Context_name.Map.find setup.scontexts ctx_name |> Option.value_exn
       in
       let* libs =
         let dir =
@@ -126,7 +126,7 @@ module Module = struct
             (fun () ->
               let cmis () =
                 let glob =
-                  Dune_engine.File_selector.of_glob
+                  Dune_deps.File_selector.of_glob
                     ~dir:(Path.build (Obj_dir.byte_dir private_obj_dir))
                     (Dune_lang.Glob.of_string_exn Loc.none "*.cmi")
                 in
@@ -204,7 +204,7 @@ module Module = struct
         let open Memo.O in
         let* setup = setup in
         let sctx =
-          Dune_engine.Context_name.Map.find setup.scontexts ctx_name |> Option.value_exn
+          Dune_deps.Context_name.Map.find setup.scontexts ctx_name |> Option.value_exn
         in
         let+ directives =
           let module_path =

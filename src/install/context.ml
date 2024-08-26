@@ -18,7 +18,7 @@ let lib_dir ~context ~package =
 ;;
 
 let of_path path =
-  match Dune_engine.Dpath.analyse_dir (Path.build path) with
+  match Dune_deps.Dpath.analyse_dir (Path.build path) with
   | Build (Regular (With_context (name, src))) ->
     Some
       (if Context_name.equal name install_context.name

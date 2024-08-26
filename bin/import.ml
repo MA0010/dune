@@ -11,12 +11,13 @@ include struct
   module Hooks = Hooks
   module Action_builder = Dune_rules.Action_builder
   module Action = Action
-  module Dep = Dep
   module Action_to_sh = Action_to_sh
-  module Dpath = Dpath
   module Findlib = Dune_rules.Findlib
   module Diff_promotion = Diff_promotion
   module Targets = Targets
+  open Dune_deps
+  module Dep = Dep
+  module Dpath = Dpath
   module Context_name = Context_name
 end
 

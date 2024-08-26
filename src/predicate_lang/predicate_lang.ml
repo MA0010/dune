@@ -115,6 +115,32 @@ let rec encode f =
   | And xs -> constr "and" (list (encode f)) xs
 ;;
 
+let rec encode_to_csexp f = function
+  | True -> encode_to_csexp f (Or [])
+  | False -> encode_to_csexp f (And [])
+  | Element a -> Sexp.List [ Sexp.Atom "Element"; f a ]
+  | Not a -> Sexp.List [ Sexp.Atom "Not"; (encode_to_csexp f) a ]
+  | Standard -> Sexp.Atom "Standard"
+  | Or xs -> Sexp.List [ Sexp.Atom "Or"; Sexp.List (List.map ~f:(encode_to_csexp f) xs) ]
+  | And xs ->
+    Sexp.List [ Sexp.Atom "And"; Sexp.List (List.map ~f:(encode_to_csexp f) xs) ]
+;;
+
+let rec decode_of_csexp f = function
+  | Sexp.List [ Sexp.Atom "Element"; e ] -> Element (f e)
+  | Sexp.Atom "Standard" -> Standard
+  | Sexp.List [ Sexp.Atom "Or"; Sexp.List l ] ->
+    (match l with
+     | [] -> True
+     | _ -> Or (List.map ~f:(decode_of_csexp f) l))
+  | Sexp.List [ Sexp.Atom "And"; Sexp.List l ] ->
+    (match l with
+     | [] -> False
+     | _ -> And (List.map ~f:(decode_of_csexp f) l))
+  | Sexp.List [ Sexp.Atom "Not"; a ] -> Not (decode_of_csexp f a)
+  | _ -> Standard
+;;
+
 let rec to_dyn f =
   let open Dyn in
   function
@@ -210,6 +236,19 @@ module Glob = struct
       let+ glob = Decoder.plain_string (fun ~loc x -> Glob.of_string_exn loc x) in
       Glob glob
     ;;
+
+    let encode_to_csexp t =
+      match t with
+      | Literal s -> Sexp.List [ Sexp.Atom "Literal"; Sexp.Atom s ]
+      | Glob g -> Sexp.List [ Sexp.Atom "Glob"; Sexp.Atom (Glob.to_string g) ]
+    ;;
+
+    let decode_of_csexp t =
+      match t with
+      | Sexp.List [ Sexp.Atom "Literal"; Sexp.Atom s ] -> Literal s
+      | Sexp.List [ Sexp.Atom "Glob"; Sexp.Atom g ] -> Glob (Glob.of_string g)
+      | _ -> Literal ""
+    ;;
   end
 
   type nonrec t = Element.t t
@@ -228,5 +267,7 @@ module Glob = struct
   let hash t = Poly.hash t
   let decode = decode Element.decode
   let encode t = encode Element.encode t
+  let encode_to_csexp t = encode_to_csexp Element.encode_to_csexp t
+  let decode_of_csexp t = decode_of_csexp Element.decode_of_csexp t
   let digest_exn t = map t ~f:Element.digest_exn |> Dune_digest.generic
 end

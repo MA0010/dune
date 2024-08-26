@@ -51,6 +51,7 @@ val store_artifacts
   :  mode:Dune_cache_storage.Mode.t
   -> rule_digest:Digest.t
   -> compute_digest:(executable:bool -> Path.t -> Digest.t Fiber.t)
+  -> needed_deps:Dep.Set.t * Digest.t
   -> Target.t Targets.Produced.t
   -> Store_artifacts_result.t Fiber.t
 
@@ -63,4 +64,6 @@ val restore_artifacts
   :  mode:Dune_cache_storage.Mode.t
   -> rule_digest:Digest.t
   -> target_dir:Path.Build.t
-  -> Digest.t Targets.Produced.t Restore_result.t
+  -> build_deps:(Dep.Set.t -> Dep.Facts.t Memo.t)
+  -> env:Env.t
+  -> (Digest.t Targets.Produced.t * (Dep.Set.t * Digest.t)) Restore_result.t Fiber.t

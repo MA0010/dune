@@ -39,6 +39,9 @@ val describe_path : Path.t -> string
 
 type t = Path.t
 
+val encode : Path.t Dune_sexp.Encoder.t
+val decode : Path.t Dune_sexp.Decoder.t
+
 module Build : sig
   type t = Path.Build.t
 

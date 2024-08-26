@@ -860,7 +860,7 @@ let setup_package_aliases_format sctx (pkg : Package.t) (output : Output_format.
   in
   Pkg name :: libs
   |> List.map ~f:(Dep.format_alias output ctx)
-  |> Dune_engine.Dep.Set.of_list_map ~f:(fun f -> Dune_engine.Dep.alias f)
+  |> Dune_deps.Dep.Set.of_list_map ~f:(fun f -> Dune_deps.Dep.alias f)
   |> Action_builder.deps
   |> Rules.Produce.Alias.add_deps alias
 ;;
@@ -964,7 +964,7 @@ let setup_private_library_doc_alias sctx ~scope ~dir (l : Library.t) =
     let lib = Lib (Lib.Local.of_lib_exn lib) in
     Rules.Produce.Alias.add_deps
       (Alias.make ~dir Alias0.private_doc)
-      (lib |> Dep.format_alias Html ctx |> Dune_engine.Dep.alias |> Action_builder.dep)
+      (lib |> Dep.format_alias Html ctx |> Dune_deps.Dep.alias |> Action_builder.dep)
 ;;
 
 let has_rules ?(directory_targets = Path.Build.Map.empty) m =

@@ -58,7 +58,7 @@ let dep_on_alias_rec alias ~loc =
               ])
       }
   | Some _ ->
-    let name = Dune_engine.Alias.name alias in
+    let name = Dune_deps.Alias.name alias in
     Alias_rec.dep_on_alias_rec name (Alias.dir alias)
     >>| (function
      | Defined -> ()

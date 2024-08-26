@@ -1,0 +1,17 @@
+(include_subdirs unqualified)
+
+(library
+ (name dune_deps)
+ (libraries
+  stdune
+  dune_sexp
+  csexp
+  memo
+  predicate_lang
+  dune_glob
+  dune_util
+  csexp_rpc
+  dune_digest)
+ (synopsis "Internal Dune library, do not use!")
+ (instrumentation
+  (backend bisect_ppx)))

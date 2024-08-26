@@ -10,7 +10,9 @@ module type S = sig
     :  can_go_in_shared_cache:bool
     -> rule_digest:Digest.t
     -> targets:Targets.Validated.t
-    -> Digest.t Targets.Produced.t option Fiber.t
+    -> build_deps:(Dep.Set.t -> Dep.Facts.t Memo.t)
+    -> env:Env.t
+    -> (Digest.t Targets.Produced.t * (Dep.Set.t * Digest.t)) option Fiber.t
 
   (** This function performs the following steps:
 
@@ -28,5 +30,6 @@ module type S = sig
     -> should_remove_write_permissions_on_generated_files:bool
     -> action:(unit -> User_message.Style.t Pp.t)
     -> produced_targets:unit Targets.Produced.t
+    -> needed_deps:Dep.Set.t * Digest.t
     -> Digest.t Targets.Produced.t Fiber.t
 end

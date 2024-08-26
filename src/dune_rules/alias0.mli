@@ -2,7 +2,7 @@
 
 (* this module contains the trailing zero not to collide with [Dune_engine.Alias] *)
 
-module Name := Dune_engine.Alias.Name
+module Name := Dune_deps.Alias.Name
 
 val fmt : Name.t
 val doc : Name.t

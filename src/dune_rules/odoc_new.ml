@@ -793,8 +793,8 @@ let parent_args parent_opt =
     let odoc_file =
       Artifact.odoc_file mld
       |> Path.build
-      |> Dune_engine.Dep.file
-      |> Dune_engine.Dep.Set.singleton
+      |> Dune_deps.Dep.file
+      |> Dune_deps.Dep.Set.singleton
     in
     [ Command.Args.A "-I"
     ; Path (Path.build dir)
@@ -842,8 +842,8 @@ let odoc_include_flags ctx all maps pkg requires indices =
 let index_dep index =
   Artifact.odoc_file index
   |> Path.build
-  |> Dune_engine.Dep.file
-  |> Dune_engine.Dep.Set.singleton
+  |> Dune_deps.Dep.file
+  |> Dune_deps.Dep.Set.singleton
 ;;
 
 let compile_module
@@ -1124,7 +1124,7 @@ let compile_odocs sctx ~all ~quiet artifacts parent libs =
               List.find artifacts ~f:(fun a -> Artifact.module_name a = Some m')
               |> Option.map ~f:(fun a' -> Artifact.odoc_file a' |> Path.build))
         in
-        Dune_engine.Dep.Set.of_files deps' |> Action_builder.deps
+        Dune_deps.Dep.Set.of_files deps' |> Action_builder.deps
       in
       let+ (_odoc_file : Path.Build.t) =
         let parent_opt =
@@ -1964,8 +1964,8 @@ let setup_all_html_rules sctx ~all =
     let deps =
       Index_tree.fold ~init:[] tree ~f:(fun index _ acc ->
         if index = [] then acc else index :: acc)
-      |> Dune_engine.Dep.Set.of_list_map ~f:(fun x ->
-        Index.html_dir ctx ~all x |> Dep.html_alias |> Dune_engine.Dep.alias)
+      |> Dune_deps.Dep.Set.of_list_map ~f:(fun x ->
+        Index.html_dir ctx ~all x |> Dep.html_alias |> Dune_deps.Dep.alias)
     in
     Rules.Produce.Alias.add_deps
       (Dep.html_alias (Index.html_dir ctx ~all []))
@@ -1994,8 +1994,8 @@ let gen_project_rules sctx project =
       let alias = Alias.make Alias0.doc_new ~dir in
       fun ~all ->
         let top_alias = Dep.html_alias (Index.html_dir ctx ~all []) in
-        Dune_engine.Dep.alias top_alias
-        |> Dune_engine.Dep.Set.singleton
+        Dune_deps.Dep.alias top_alias
+        |> Dune_deps.Dep.Set.singleton
         |> Action_builder.deps
         |> Rules.Produce.Alias.add_deps alias
     in

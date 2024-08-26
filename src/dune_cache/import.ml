@@ -5,4 +5,5 @@ module Targets = Dune_targets
 module Cached_digest = Dune_digest.Cached_digest
 module Console = Dune_console
 module Log = Dune_util.Log
+module Dep = Dune_deps.Dep
 include Stdune

@@ -12,6 +12,11 @@ module Persistent = Dune_util.Persistent
 module Execution_env = Dune_util.Execution_env
 module Glob = Dune_glob.V1
 module Targets = Dune_targets
+module Dep = Dune_deps.Dep
+module Alias = Dune_deps.Alias
+module File_selector = Dune_deps.File_selector
+module Dpath = Dune_deps.Dpath
+module Context_name = Dune_deps.Context_name
 include No_io
 include Dune_config
 
