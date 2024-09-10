@@ -126,19 +126,24 @@ let rec encode_to_csexp f = function
     Sexp.List [ Sexp.Atom "And"; Sexp.List (List.map ~f:(encode_to_csexp f) xs) ]
 ;;
 
-let rec decode_of_csexp f = function
+let rec decode_of_csexp ~loc f t =
+  match t with
   | Sexp.List [ Sexp.Atom "Element"; e ] -> Element (f e)
   | Sexp.Atom "Standard" -> Standard
   | Sexp.List [ Sexp.Atom "Or"; Sexp.List l ] ->
     (match l with
      | [] -> True
-     | _ -> Or (List.map ~f:(decode_of_csexp f) l))
+     | _ -> Or (List.map ~f:(decode_of_csexp ~loc f) l))
   | Sexp.List [ Sexp.Atom "And"; Sexp.List l ] ->
     (match l with
      | [] -> False
-     | _ -> And (List.map ~f:(decode_of_csexp f) l))
-  | Sexp.List [ Sexp.Atom "Not"; a ] -> Not (decode_of_csexp f a)
-  | _ -> Standard
+     | _ -> And (List.map ~f:(decode_of_csexp ~loc f) l))
+  | Sexp.List [ Sexp.Atom "Not"; a ] -> Not (decode_of_csexp ~loc f a)
+  | _ ->
+    Code_error.raise
+      ~loc
+      "Internal Error : can not parse S-expression into a dependency"
+      [ "Failure while parsing", Dyn.string (Sexp.to_string t) ]
 ;;
 
 let rec to_dyn f =

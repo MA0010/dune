@@ -48,7 +48,7 @@ module Glob : sig
   val decode : t Dune_sexp.Decoder.t
   val encode : t -> Dune_sexp.t
   val encode_to_csexp : t -> Sexp.t
-  val decode_of_csexp : Sexp.t -> t
+  val decode_of_csexp : Sexp.t -> loc:Loc.t -> t
 
   (** Raises on non-serialisable globs, just like most other functions above. *)
   val digest_exn : t -> Dune_digest.t

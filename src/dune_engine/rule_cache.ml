@@ -181,27 +181,28 @@ module Workspace_local = struct
       (* CR-someday aalekseyev: If there's a change at one of the last stages,
          we still re-run all the previous stages, which is a bit of a waste. We
          could remember what stage needs re-running and only re-run that (and
-         later stages). *)
-      let rec loop stages needed_deps =
-        match stages with
-        | [] ->
-          let open Fiber.O in
-          let deps, old_digest = needed_deps in
-          let* deps = Memo.run (build_deps deps) in
-          let new_digest = Dep.Facts.digest deps ~env in
-          (match Digest.equal old_digest new_digest with
-           | true -> Fiber.return (Hit produced_targets)
-           | false -> Fiber.return (Miss Miss_reason.Needed_deps_changed))
-        | (deps, old_digest) :: rest ->
-          let open Fiber.O in
-          let* deps = Memo.run (build_deps deps) in
-          let new_digest = Dep.Facts.digest deps ~env in
-          (match Digest.equal old_digest new_digest with
-           | true -> loop rest needed_deps
-           | false -> Fiber.return (Miss Miss_reason.Dynamic_deps_changed))
-      in
-      loop prev_trace.dynamic_deps_stages prev_trace.needed_deps
-  ;;
+         later stages). *)   
+         let rec check_dynamic_deps stages =
+          match stages with
+          | [] -> Fiber.return (Hit produced_targets)
+          | (deps, old_digest) :: rest ->
+            let open Fiber.O in
+            let* deps = Memo.run (build_deps ~build_mode:Action_intf.Exec.Eager deps) in
+            let new_digest = Dep.Facts.digest deps ~env in
+            (match Digest.equal old_digest new_digest with
+             | true -> check_dynamic_deps rest
+             | false -> Fiber.return (Miss Miss_reason.Dynamic_deps_changed))
+        in
+        let open Fiber.O in
+        let deps, old_digest = prev_trace.needed_deps in
+        let* deps =
+          Memo.run (build_deps ~build_mode:(Action_intf.Exec.Lazy Loc.none) deps)
+        in
+        let new_digest = Dep.Facts.digest deps ~env in
+        (match Digest.equal old_digest new_digest with
+         | true -> check_dynamic_deps prev_trace.dynamic_deps_stages
+         | false -> Fiber.return (Miss Miss_reason.Needed_deps_changed))
+    ;;
 
   let lookup ~always_rerun ~rule_digest ~targets ~env ~build_deps
     : Digest.t Targets.Produced.t option Fiber.t
