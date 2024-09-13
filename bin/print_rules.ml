@@ -99,6 +99,7 @@ let rec encode : Action.For_shell.t -> Dune_lang.t =
   | Mkdir x -> List [ atom "mkdir"; target x ]
   | Pipe (outputs, l) ->
     List (atom (sprintf "pipe-%s" (Outputs.to_string outputs)) :: List.map l ~f:encode)
+  | Needed_deps xs -> List (atom "needed_deps" :: List.map xs ~f:path)
   | Extension ext -> List [ atom "ext"; Dune_sexp.Quoted_string (Sexp.to_string ext) ]
 ;;
 
@@ -115,7 +116,7 @@ let encode_path p =
 
 let encode_file_selector file_selector =
   let open Dune_sexp.Encoder in
-  let module File_selector = Dune_engine.File_selector in
+  let module File_selector = Dune_deps.File_selector in
   let dir = File_selector.dir file_selector in
   let predicate = File_selector.predicate file_selector in
   let only_generated_files = File_selector.only_generated_files file_selector in
@@ -128,8 +129,8 @@ let encode_file_selector file_selector =
 
 let encode_alias alias =
   let open Dune_sexp.Encoder in
-  let dir = Dune_engine.Alias.dir alias in
-  let name = Dune_engine.Alias.name alias in
+  let dir = Dune_deps.Alias.dir alias in
+  let name = Dune_deps.Alias.name alias in
   record
     [ "dir", encode_path (Path.build dir)
     ; "name", Dune_sexp.atom_or_quoted_string (Dune_util.Alias_name.to_string name)

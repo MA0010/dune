@@ -12,7 +12,7 @@ include struct
 end
 
 module Package = Dune_lang.Package
-module Context_name = Dune_engine.Context_name
+module Context_name = Dune_deps.Context_name
 
 let package_name = conv Package.Name.conv
 
@@ -45,7 +45,7 @@ module Dep = struct
 
   let make_alias_sw ~dir s =
     let path =
-      Dune_engine.Alias.Name.to_string s
+      Dune_deps.Alias.Name.to_string s
       |> Stdune.Path.Local.relative dir
       |> Stdune.Path.Local.to_string
     in
